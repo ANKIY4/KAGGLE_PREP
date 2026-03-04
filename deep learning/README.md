@@ -44,6 +44,12 @@ Each topic has:
 
 ---
 
+## Formula deep-dive compendium
+
+- [`10_formula_deep_dive_compendium.ipynb`](10_formula_deep_dive_compendium.ipynb) provides a math-focused deep dive for notebooks `00`-`09`, with formal definitions, symbol-by-symbol parameters, assumptions, research grounding, and mathematical advantages/failure modes.
+
+---
+
 ## Pedagogical format used in notebooks
 
 Most notebooks follow this structure:

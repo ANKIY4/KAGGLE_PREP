@@ -33,18 +33,21 @@ This module is a competition-oriented extension of `Prepare_kaggle`, focused on 
 
 Each notebook follows:
 1. Problem Definition
-2. Mathematical Foundations
-3. Step-by-Step Derivation
-4. Intuition
-5. Mapping from Math to Implementation
-6. Synthetic Experiment
-7. Real Dataset Experiment
-8. Diagnostic Analysis
-9. Failure Case Demonstration
-10. Exercise Ladder
-11. Summary of Mathematical Insights
-12. Required Prior Knowledge
-13. New Concepts Introduced
+2. Required Prior Knowledge
+3. New Concepts Introduced
+4. Formal Definition
+5. Variables and Assumptions
+6. Symbol-by-Symbol Explanation
+7. Zero-Skip Derivation
+8. Explicit Logical Transitions
+9. Intuition
+10. Mapping from Math to Implementation
+11. Synthetic Experiment
+12. Real Dataset Experiment
+13. Diagnostic Analysis
+14. Failure Analysis
+15. Exercise Ladder
+16. Summary of Mathematical Insights
 
 ## Strict concept ordering
 
@@ -93,3 +96,8 @@ jupyter notebook
 python3 build_advanced_module_notebooks.py
 ```
 
+Run validations only (structure, concept ordering, MathJax-oriented checks):
+
+```bash
+python3 build_advanced_module_notebooks.py --validate-only
+```

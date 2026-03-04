@@ -2,12 +2,59 @@
 
 from __future__ import annotations
 
+import argparse
+import re
 from pathlib import Path
 
 import nbformat as nbf
 
 
 MODULE_DIR = Path(__file__).resolve().parent
+EXPECTED_TOPIC_IDS = ("10", "11", "12", "13", "14", "15", "16")
+REQUIRED_SECTION_HEADERS = (
+    "## Problem Definition",
+    "## Required Prior Knowledge",
+    "## New Concepts Introduced",
+    "## Formal Definition",
+    "## Variables and Assumptions",
+    "## Symbol-by-Symbol Explanation",
+    "## Zero-Skip Derivation",
+    "## Explicit Logical Transitions",
+    "## Intuition",
+    "## Mapping from Math to Implementation",
+    "## Synthetic Experiment",
+    "## Real Dataset Experiment",
+    "## Failure Analysis",
+    "## Summary of Mathematical Insights",
+)
+DEFAULT_VARIABLES_ASSUMPTIONS = """
+- Data are indexed by $i\\in\\{1,\\dots,n\\}$ with features $x_i\\in\\mathbb{R}^d$ and target $y_i$.
+- Model parameters are represented by $\\theta$, and predictions are $\\hat{y}_i=f_\\theta(x_i)$.
+- Any preprocessing statistics are fit on training partitions only and reused on validation/test partitions.
+- Split protocol (KFold/Group/TimeSeries) must match the data-generating assumptions for IID, grouped, or temporal samples.
+- Reported metrics are empirical estimates with finite-sample variance; interpretation must include uncertainty.
+"""
+DEFAULT_SYMBOL_EXPLANATION = """
+| Symbol | Meaning |
+|---|---|
+| $x_i$ | feature vector for sample $i$ |
+| $y_i$ | target for sample $i$ |
+| $f_\\theta$ | model parameterized by $\\theta$ |
+| $L(\\cdot,\\cdot)$ | per-sample loss function |
+| $n$ | number of samples |
+| $d$ | raw feature dimension |
+| $p$ | transformed feature dimension / polynomial degree context |
+| $K$ | number of folds / partitions |
+| $V_k$ | validation index set for fold $k$ |
+| $\\lambda,\\alpha,\\tau$ | regularization/smoothing/confidence hyperparameters |
+"""
+DEFAULT_LOGICAL_TRANSITIONS = """
+1. Start from the formal objective and identify estimators/transformations introduced in this notebook.
+2. Map each estimator term to computable quantities under train/validation split constraints.
+3. Show why each derivation step is valid (algebraic identity, estimator definition, or probabilistic assumption).
+4. Convert the derivation into an implementation protocol with explicit leakage controls.
+5. Validate with synthetic and real-data experiments, then interpret failure conditions.
+"""
 
 
 COMMON_SETUP_CODE = """
@@ -79,7 +126,7 @@ set_global_seed(SEED)
 
 
 def add_md(nb, text: str) -> None:
-    nb.cells.append(nbf.v4.new_markdown_cell(text.strip()))
+    nb.cells.append(nbf.v4.new_markdown_cell(normalize_mathjax_markdown(text.strip())))
 
 
 def add_code(nb, code: str) -> None:
@@ -95,6 +142,43 @@ def new_nb() -> nbf.NotebookNode:
     }
     nb.metadata.language_info = {"name": "python"}
     return nb
+
+
+def normalize_mathjax_markdown(text: str) -> str:
+    """
+    Convert accidentally double-escaped LaTeX commands (for example:
+    two backslashes before a command token) to single-backslash commands,
+    while preserving explicit line-break markers written as double backslash
+    followed by whitespace/newline.
+    """
+    return re.sub(r"\\\\(?=\S)", r"\\", text)
+
+
+def _strip_leading_heading_block(text: str) -> str:
+    lines = text.strip().splitlines()
+    while lines and lines[0].lstrip().startswith("#"):
+        lines.pop(0)
+        while lines and not lines[0].strip():
+            lines.pop(0)
+    return "\n".join(lines).strip()
+
+
+def with_concept_scaffold(spec: dict[str, str]) -> dict[str, str]:
+    scaffolded = dict(spec)
+    default_assumptions = (
+        f"- Scope: {spec['title']} targets the objective `{spec['problem']}`.\n"
+        f"{DEFAULT_VARIABLES_ASSUMPTIONS.strip()}"
+    )
+    default_transitions = (
+        f"0. Context anchor: this notebook focuses on `{spec['title']}` and objective `{spec['problem']}`.\n"
+        f"{DEFAULT_LOGICAL_TRANSITIONS.strip()}"
+    )
+    scaffolded["formal_definition"] = _strip_leading_heading_block(spec.get("formal_definition", spec["math"]))
+    scaffolded["variables_assumptions"] = spec.get("variables_assumptions", default_assumptions).strip()
+    scaffolded["symbol_explanation"] = spec.get("symbol_explanation", DEFAULT_SYMBOL_EXPLANATION).strip()
+    scaffolded["zero_skip_derivation"] = _strip_leading_heading_block(spec.get("zero_skip_derivation", spec["derivation"]))
+    scaffolded["logical_transitions"] = spec.get("logical_transitions", default_transitions).strip()
+    return scaffolded
 
 
 def make_topics() -> list[dict[str, str]]:
@@ -1066,6 +1150,7 @@ print({"public_proxy": public_proxy, "chosen_by_public": chosen, "private_proxy"
 
 
 def build_notebook(spec: dict[str, str], solution: bool) -> nbf.NotebookNode:
+    spec = with_concept_scaffold(spec)
     nb = new_nb()
     suffix = "Solutions" if solution else "Lesson"
     add_md(
@@ -1083,26 +1168,11 @@ def build_notebook(spec: dict[str, str], solution: bool) -> nbf.NotebookNode:
 {spec['new']}
 """,
     )
-    add_md(nb, spec["math"])
-    add_md(
-        nb,
-        """
-## Symbol-by-Symbol Explanation
-| Symbol | Meaning |
-|---|---|
-| $x_i$ | feature vector for sample $i$ |
-| $y_i$ | target for sample $i$ |
-| $f_\\theta$ | model parameterized by $\\theta$ |
-| $L(\\cdot,\\cdot)$ | per-sample loss function |
-| $n$ | number of samples |
-| $d$ | raw feature dimension |
-| $p$ | transformed feature dimension / polynomial degree context |
-| $K$ | number of folds / partitions |
-| $V_k$ | validation index set for fold $k$ |
-| $\\lambda,\\alpha,\\tau$ | regularization/smoothing/confidence hyperparameters |
-""",
-    )
-    add_md(nb, spec["derivation"])
+    add_md(nb, f"## Formal Definition\n{spec['formal_definition']}")
+    add_md(nb, f"## Variables and Assumptions\n{spec['variables_assumptions']}")
+    add_md(nb, f"## Symbol-by-Symbol Explanation\n{spec['symbol_explanation']}")
+    add_md(nb, f"## Zero-Skip Derivation\n{spec['zero_skip_derivation']}")
+    add_md(nb, f"## Explicit Logical Transitions\n{spec['logical_transitions']}")
     add_md(nb, f"## Intuition\n{spec['intuition']}")
     add_md(nb, f"## Mapping from Math to Implementation\n{spec['code_map']}")
     add_code(nb, COMMON_SETUP_CODE + "\nMODULE_DIR = Path('.').resolve()")
@@ -1112,7 +1182,7 @@ def build_notebook(spec: dict[str, str], solution: bool) -> nbf.NotebookNode:
     add_code(nb, spec["real_code"])
     add_md(nb, "## Diagnostic Analysis")
     add_code(nb, spec["diagnostic_code"])
-    add_md(nb, "## Failure Case Demonstration")
+    add_md(nb, "## Failure Analysis")
     add_code(nb, spec["failure_code"])
     add_md(nb, f"## Exercise Ladder (basic → advanced → research-level)\n{spec['exercises']}")
     if solution:
@@ -1129,18 +1199,83 @@ def build_notebook(spec: dict[str, str], solution: bool) -> nbf.NotebookNode:
     return nb
 
 
-def main() -> None:
-    topics = make_topics()
+def validate_topic_order(topics: list[dict[str, str]]) -> None:
+    ids = tuple(spec["id"] for spec in topics)
+    if ids != EXPECTED_TOPIC_IDS:
+        raise ValueError(f"Topic IDs must be ordered {EXPECTED_TOPIC_IDS}, got {ids}")
     for spec in topics:
-        lesson_nb = build_notebook(spec, solution=False)
-        solution_nb = build_notebook(spec, solution=True)
+        current = int(spec["id"])
+        mentioned = [int(m) for m in re.findall(r"\b1[0-9]\b", spec.get("prior", ""))]
+        if any(m > current for m in mentioned):
+            raise ValueError(f"Notebook {spec['id']} prior knowledge references future notebook(s): {mentioned}")
+
+
+def validate_mathjax_markdown(markdown: str, notebook_name: str, cell_idx: int) -> None:
+    if re.search(r"\\\\(?=\S)", markdown):
+        raise ValueError(
+            f"{notebook_name} cell {cell_idx}: double-backslash LaTeX token detected"
+        )
+    fenced_blocks = re.findall(r"```[\s\S]*?```", markdown)
+    for block in fenced_blocks:
+        if re.search(r"\\[a-zA-Z]+|\$", block):
+            raise ValueError(f"{notebook_name} cell {cell_idx}: LaTeX markers found inside code fence")
+    if markdown.count("$$") % 2 != 0:
+        raise ValueError(f"{notebook_name} cell {cell_idx}: unmatched $$ delimiter")
+    without_display = re.sub(r"\$\$[\s\S]*?\$\$", "", markdown)
+    inline_check = without_display.replace(r"\$", "")
+    if inline_check.count("$") % 2 != 0:
+        raise ValueError(f"{notebook_name} cell {cell_idx}: unmatched inline $ delimiter")
+    for env in ("aligned", "align", "cases"):
+        if markdown.count(f"\\begin{{{env}}}") != markdown.count(f"\\end{{{env}}}"):
+            raise ValueError(f"{notebook_name} cell {cell_idx}: unmatched {env} environment")
+    for match in re.finditer(r"\$(?!\$)(.*?)(?<!\\)\$", without_display, flags=re.DOTALL):
+        if "\n" in match.group(1):
+            raise ValueError(f"{notebook_name} cell {cell_idx}: inline math spans multiple lines")
+
+
+def validate_notebook(nb: nbf.NotebookNode, notebook_name: str, solution: bool) -> None:
+    nbf.validate(nb)
+    markdown_blob = "\n\n".join(cell.source for cell in nb.cells if cell.cell_type == "markdown")
+    for header in REQUIRED_SECTION_HEADERS:
+        if header not in markdown_blob:
+            raise ValueError(f"{notebook_name}: missing required section {header}")
+    if solution and "## Solution Notes" not in markdown_blob:
+        raise ValueError(f"{notebook_name}: missing solution notes section")
+    for idx, cell in enumerate(nb.cells):
+        if cell.cell_type == "markdown":
+            validate_mathjax_markdown(cell.source, notebook_name, idx)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--validate-only", action="store_true", help="Validate existing generated notebooks without rewriting them.")
+    args = parser.parse_args()
+
+    topics = make_topics()
+    validate_topic_order(topics)
+    for spec in topics:
         lesson_name = f"{spec['id']}_{spec['slug']}.ipynb"
         solution_name = f"{spec['id']}_{spec['slug']}_solutions.ipynb"
-        with (MODULE_DIR / lesson_name).open("w", encoding="utf-8") as f:
-            nbf.write(lesson_nb, f)
-        with (MODULE_DIR / solution_name).open("w", encoding="utf-8") as f:
-            nbf.write(solution_nb, f)
-    print(f"Generated {len(topics) * 2} notebooks in {MODULE_DIR}")
+        lesson_path = MODULE_DIR / lesson_name
+        solution_path = MODULE_DIR / solution_name
+        if args.validate_only:
+            with lesson_path.open("r", encoding="utf-8") as f:
+                lesson_nb = nbf.read(f, as_version=4)
+            with solution_path.open("r", encoding="utf-8") as f:
+                solution_nb = nbf.read(f, as_version=4)
+        else:
+            lesson_nb = build_notebook(spec, solution=False)
+            solution_nb = build_notebook(spec, solution=True)
+            with lesson_path.open("w", encoding="utf-8") as f:
+                nbf.write(lesson_nb, f)
+            with solution_path.open("w", encoding="utf-8") as f:
+                nbf.write(solution_nb, f)
+        validate_notebook(lesson_nb, lesson_name, solution=False)
+        validate_notebook(solution_nb, solution_name, solution=True)
+    if args.validate_only:
+        print(f"Validated {len(topics) * 2} notebooks in {MODULE_DIR}")
+    else:
+        print(f"Generated and validated {len(topics) * 2} notebooks in {MODULE_DIR}")
 
 
 if __name__ == "__main__":
