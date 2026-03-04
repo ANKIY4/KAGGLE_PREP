@@ -1,39 +1,63 @@
 # Prepare_kaggle
 
-`Prepare_kaggle` is a notebook-first machine learning curriculum for Kaggle-style workflows, covering deep learning fundamentals through advanced competition strategy.
+`Prepare_kaggle` is a full Kaggle learning system with three layers:
+1) core deep-learning practice,  
+2) advanced feature-engineering/competition strategy,  
+3) a meta-curriculum control layer that tells you how to use both correctly.
+
+---
 
 ## Repository modules
 
-### 1) `deep learning/` (core curriculum)
-- Foundation-to-intermediate track (`00` to `09`) with lesson + solutions notebooks.
-- Emphasis on PyTorch training dynamics, regularization, hyperparameter tuning, and tabular competition practice.
-- Includes notebook generator tooling in `deep learning/generators/`.
+### 1) `00_kaggle_meta_curriculum/` (control layer)
+- Orchestration-first guidance for learning sequence, competition operating rules, and self-evaluation.
+- Includes:
+  - learning path and prerequisites
+  - Kaggle strategy docs (feature-first reasoning, CV failure modes, common mistakes)
+  - CV mastery assets + leakage examples notebook
+  - end-to-end competition simulation notebooks
+  - readiness rubric/checklists
+
+See: `00_kaggle_meta_curriculum/README.md`
+
+### 2) `deep learning/` (core track)
+- Foundation-to-intermediate notebooks (`00` to `09`) with lesson + solution pairs.
+- Focus: optimization, regularization, hyperparameter tuning, model behavior, and tabular competition foundations.
+- Includes:
+  - generator tooling in `deep learning/generators/`
+  - formula deep-dive notebook: `deep learning/10_formula_deep_dive_compendium.ipynb`
 
 See: `deep learning/README.md`
 
-### 2) `10_advanced_feature_engineering_and_competition_strategies/` (advanced track)
-- Advanced lessons (`10` to `16`) with lesson + solutions notebooks.
-- Focus on mathematically rigorous feature engineering, CV design, leakage detection, ensembling/stacking, pseudo-labeling, and competition simulation.
-- Includes reusable utility modules:
+### 3) `10_advanced_feature_engineering_and_competition_strategies/` (advanced track)
+- Advanced notebooks (`10` to `16`) with lesson + solution pairs.
+- Focus: feature engineering rigor, CV mastery, leakage detection, ensembling/stacking, pseudo-labeling, competition simulation.
+- Includes reusable utilities:
   - `feature_utils.py`
   - `cv_utils.py`
   - `ensemble_utils.py`
   - `experiment_logger.py`
-- Includes notebook generator:
-  - `build_advanced_module_notebooks.py`
+- Includes:
+  - generator + validator: `build_advanced_module_notebooks.py`
+  - formula deep-dive notebook: `17_formula_deep_dive_compendium.ipynb`
 
 See: `10_advanced_feature_engineering_and_competition_strategies/README.md`
 
-## Full notebook progression
+---
 
-Recommended learning order:
-1. `deep learning/00` to `deep learning/06`
-2. `deep learning/08`
-3. `deep learning/09`
-4. `deep learning/07` (boosting comparison)
-5. `10_advanced_feature_engineering_and_competition_strategies/10` to `.../16`
+## Recommended learning flow
 
-This order keeps conceptual prerequisites aligned and moves from baseline training mechanics to full competition decision systems.
+1. Start in `00_kaggle_meta_curriculum/01_learning_map/` to understand progression and prerequisites.
+2. Build fundamentals in `deep learning/00` -> `deep learning/06`.
+3. Do competition-oriented core notebooks: `deep learning/08`, `deep learning/09`, then `deep learning/07`.
+4. Move to advanced track: `10_.../10` -> `10_.../16`.
+5. Use `00_kaggle_meta_curriculum/04_competition_simulation/` and `05_evaluation_rubric/` for repeated practice and readiness checks.
+
+If you want formula-level depth, use:
+- `deep learning/10_formula_deep_dive_compendium.ipynb`
+- `10_advanced_feature_engineering_and_competition_strategies/17_formula_deep_dive_compendium.ipynb`
+
+---
 
 ## Setup
 
@@ -45,13 +69,13 @@ source .venv/bin/activate
 pip install --upgrade pip
 ```
 
-Install dependencies for the core module:
+Install core track dependencies:
 
 ```bash
 pip install -r "deep learning/requirements.txt"
 ```
 
-Install dependencies for the advanced module:
+Install advanced track dependencies:
 
 ```bash
 pip install -r "10_advanced_feature_engineering_and_competition_strategies/requirements.txt"
@@ -63,34 +87,38 @@ Launch Jupyter:
 jupyter notebook
 ```
 
-## Reproducibility principles
+---
 
-- Seed-controlled experiments are used throughout notebooks and utilities.
-- Leakage-safe patterns (especially OOF encodings and OOF stacking) are emphasized.
-- Dataset handling follows a hybrid policy:
-  - sklearn built-ins by default
-  - auto-download where needed
-  - deterministic fallbacks where possible
+## Reproducibility and validation principles
+
+- Use fixed seeds for all experiments.
+- Treat CV design as a first-class system decision.
+- Reject any gain that fails leakage checks.
+- Prefer stable fold-level improvements over public leaderboard spikes.
+- Keep experiment tracking disciplined (features, splitter, seed, params, metric, notes).
+
+---
 
 ## Regenerating notebooks
 
-Core module:
+Core track:
 
 ```bash
 cd "deep learning/generators"
 python3 generate_advanced_notebooks.py
 ```
 
-Advanced module:
+Advanced track:
 
 ```bash
 cd "10_advanced_feature_engineering_and_competition_strategies"
 python3 build_advanced_module_notebooks.py
+python3 build_advanced_module_notebooks.py --validate-only
 ```
 
-## Notes
+---
 
-- Lesson notebooks are designed for self-attempt first.
-- Solution notebooks provide full worked implementations and interpretation guidance.
-- For competition practice, keep a strict experiment log (seed, feature set, CV design, model config, and public/private behavior).
+## Usage note
 
+Use `00_kaggle_meta_curriculum/` as your operational control panel, and use the other two folders as execution engines.  
+That separation is intentional and is the fastest path to reliable Kaggle skill growth.
